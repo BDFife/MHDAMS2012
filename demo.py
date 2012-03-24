@@ -34,40 +34,6 @@ def show_album(album):
 
     return "Top result: " + top_album + " by " + top_artist
 
-"""
-
-@app.route('/show/artist/<artist>')
-def show_artist(artist):
-
-    my_url = 'http://api.rovicorp.com/data/v1/name/info?name=' + str(artist) + '&apikey=' + str(apikey()) + '&sig=' + str(sign())
-
-    f = urllib.urlopen(my_url)
-    artist = json.loads(f.read())
-
-    print my_url
-    
-    artist_info = {}
-    artist_info["name"] = artist["name"]["name"]
-    artist_info["birth"] = artist["name"]["birth"]["date"]
-    artist_info["home"] = artist["name"]["birth"]["place"]
-
-    return render_template('artist.html', artist_info=artist_info)
-
-@app.route('/autocomplete/<query>')
-def autocomplete(query):
-
-    autocomplete = get_autocomplete(query)
-
-    autocomplete_info = autocomplete["autocompleteResponse"]["results"]
-
-    return render_template('autocomplete.html', autocomplete=autocomplete_info)
-
-@app.route('/show/name/<name>')
-def show_name(name):
-    return render_template('name.html', name=name)
-
-"""
-
 if __name__ == '__main__':
     app.debug = True
     app.run()
