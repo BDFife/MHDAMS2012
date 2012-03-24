@@ -16,23 +16,11 @@ def msg_trim(msg, msg_array):
 	if len(msg) < 160:
 		msg_array.append(msg)
 	else:
-		index = msg.rfind('#', 0, 160)
+		index = msg.rfind('\r\n', 0, 160)
 		index = (index + 1)
 		msg_array.append(msg[:index])
 		msg_trim(msg[index:], msg_array)	
 	return msg_array
-
-"""
-def msg_trim(msg):
-    msg_array = [ ] 
-    if len(msg_trim) < 160:
-        msg_array.append(msg)
-        return msg
-    else:
-        index = msg.rfind('\r\n', 0, 160)
-        msg_array.append(msg[:(index+1)])
-        msg_trim(msg[(index+1):])
-"""
 
 @app.route('/', methods=['POST', 'GET'])
 def index():
@@ -88,7 +76,7 @@ def show_discography():
     if request.method == 'POST':
         artist_name = request.form.get("Body")
 
-        my_url = 'http://api.rovicorp.com/data/v1/name/discography?name=' + str(artist_name) + '&type=main' + '&count=14'+ '&format=json' + '&apikey=' + str(apikey()) + '&sig=' + str(sign()) 
+        my_url = 'http://api.rovicorp.com/data/v1/name/discography?name=' + str(artist_name) + '&type=main' + '&format=json' + '&apikey=' + str(apikey()) + '&sig=' + str(sign()) 
 
         f = urllib.urlopen(my_url)
         discography = json.loads(f.read())
@@ -100,15 +88,10 @@ def show_discography():
         # now chop the string into 160 character chunks. 
         msg_array = [ ]
         msg_trim(album_str, msg_array)
-        #resp= twilio.twiml.Response()
-        #for message in msg_array:
-        #    resp.sms(message)
-        #return str(resp)
         resp= twilio.twiml.Response()
-        resp.sms("hello")
+        for message in msg_array:
+            resp.sms(message)
         return str(resp)
-
-
 
 """
     my_url = 'http://api.rovicorp.com/data/v1/album/info?album=' + str(album) + '&apikey=' + str(apikey()) + '&sig=' + str(sign())
