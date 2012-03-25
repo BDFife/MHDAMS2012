@@ -1,6 +1,7 @@
 from flask import Flask
 from flask import request
 from flask import url_for, redirect
+from flask import render_template
 
 from secrets import apikey, sign
 
@@ -59,9 +60,7 @@ def cmd_parse(cmd):
 @app.route('/', methods=['POST', 'GET'])
 def index():
     if request.method == 'GET':
-        resp = twilio.twiml.Response()
-        resp.sms("This needs to be a POST")
-        return str(resp)
+        return render_template('index.html')
 
     if request.method == 'POST':
         cmd_text = request.form.get("Body")
