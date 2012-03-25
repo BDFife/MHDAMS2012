@@ -13,15 +13,20 @@ import re
 
 app = Flask (__name__)
 
-def msg_trim(msg, msg_array):
+def msg_trim(msg, msg_array, br_char):
     if len(msg) < 160:
         msg_array.append(msg)
     else:
-        index = msg.rfind('\r\n', 0, 160)
+        index = msg.rfind(br_char, 0, 160)
         index += 1
-        msg_array.appebnd(msg[:index])
-        msg_trim(msg[index:], msg_array)
+        msg_array.append(msg[:index])
+        msg_trim(msg[index:], msg_array, br_char)
     return msg_array
+
+def scrub_links(text):
+    remove_links = re.compile(r"""\[.*?\]""")
+    new_text = remove_links.sub("", text)
+    return new_text
 
 def cmd_parse(cmd):
     command_ref = re.compile(r"""
@@ -44,8 +49,8 @@ def cmd_parse(cmd):
         my_cmd = result.group('cmd')
         my_data = result.group('data')
     else:
-        my_cmd = 'help'
-        my_data = None
+        my_cmd = "info"
+        my_data = 'garbage'
     return my_cmd, my_data
 
 @app.route('/', methods=['POST', 'GET'])
@@ -58,11 +63,14 @@ def index():
     if request.method == 'POST':
         cmd_text = request.form.get("Body")
         cmd, data = cmd_parse(cmd_text)
-        #resp = twilio.twiml.Response()
-        #resp.sms("You asked for " + str(cmd )+ " of " + str(data))
-        #return str(resp)
         return redirect(url_for(cmd, data=data))
-                        
+
+@app.route('/commands/info/<data>', methods=['POST', 'GET'])
+def info(data):
+    resp = twilio.twiml.Response()
+    resp.sms("Valid commands are name, bio, album, review.\r\n Example: 'name bieber'")
+    return str(resp)
+
 @app.route('/album/info/<data>', methods=['POST', 'GET'])
 def album(data):
     my_url = 'http://api.rovicorp.com/data/v1/album/info?album=' + str(data) + '&apikey=' + str(apikey()) + '&sig=' + str(sign())
@@ -71,49 +79,79 @@ def album(data):
     album = json.loads(f.read())
     top_album = album["album"]["title"]
     top_artist = album["album"]["primaryArtists"][0]["name"]
+    release_date = album["album"]["originalReleaseDate"]
 
     resp= twilio.twiml.Response()
-    resp.sms("Top result: " + top_album + " by " + top_artist)
+    resp.sms("Top result: " + top_album + " by " + top_artist + ". Released on " + str(release_date))
     return str(resp)
 
-@app.route('/artist/discography/', methods=['POST', 'GET'])
-def show_discography():
-    if request.method == 'GET':
-        resp = twilio.twiml.Response()
-        resp.sms("You need to use a POST method with this URL")
-        return str(resp)
+@app.route('/artist/discography/<data>', methods=['POST', 'GET'])
+def name(data):
+    my_url = 'http://api.rovicorp.com/data/v1/name/discography?name=' + str(data) + '&type=main' + '&format=json' + '&apikey=' + str(apikey()) + '&sig=' + str(sign()) 
     
-    if request.method == 'POST':
-        artist_name = request.form.get("Body")
-        my_url = 'http://api.rovicorp.com/data/v1/name/discography?name=' + str(artist_name) + '&type=main' + '&format=json' + '&apikey=' + str(apikey()) + '&sig=' + str(sign()) 
-        f = urllib.urlopen(my_url)
-        discography = json.loads(f.read())
-        album_str = ""
-        for albums in discography['discography']:
-            album_str = album_str + albums.get('title') + " " + albums.get('year')[:4] + "\r\n"
-
-        # now chop the string into 160 character chunks. 
-        msg_array = [ ]
-        msg_trim(album_str, msg_array)
-        resp= twilio.twiml.Response()
-        for message in msg_array:
-            resp.sms(message)
-        return str(resp)
-
-"""
-    my_url = 'http://api.rovicorp.com/data/v1/album/info?album=' + str(album) + '&apikey=' + str(apikey()) + '&sig=' + str(sign())
-
     f = urllib.urlopen(my_url)
-    album = json.loads(f.read())
-    top_album = album["album"]["title"]
-    top_artist = album["album"]["primaryArtists"][0]["name"]
+    discography = json.loads(f.read())
+    
+    album_str = ""
+    for albums in discography['discography']:
+        album_str = album_str + albums.get('title') + " " + albums.get('year')[:4] + "\r\n"
+    
+    # now chop the string into 160 character chunks. 
+    msg_array = [ ]
+    msg_trim(album_str, msg_array, '\r\n')
+
+    resp= twilio.twiml.Response()
+    for message in msg_array:
+        resp.sms(message)
+    return str(resp)
+
+@app.route('/artist/bio/<data>', methods=['POST', 'GET'])
+def bio(data):
+    my_url = 'http://api.rovicorp.com/data/v1/name/musicbio?name=' + str(data) + '&format=json' + '&apikey=' + str(apikey()) + '&sig=' + str(sign())
+    
+    f = urllib.urlopen(my_url)
+    biography = json.loads(f.read())
+
+    bio_text = "Sorry, no bio available"
+    music_bio = biography.get("musicBio")
+
+    if music_bio:
+        music_overview = music_bio.get("musicBioOverview")
+        if music_overview:
+            bio_text = music_overview[0].get("overview")
+    bio_text = scrub_links(bio_text)
+
+    # chop to 160 chunks
+    msg_array = [ ] 
+    msg_trim(bio_text, msg_array, " ")
 
     resp = twilio.twiml.Response()
-    resp.sms( "Top result: " + top_album + " by " + top_artist)
+    for message in msg_array:
+        resp.sms(message)
     return str(resp)
 
-    #return "Top result: " + top_album + " by " + top_artist
-"""
+@app.route('/album/review/<data>', methods=['POST', 'GET'])
+def review(data):
+    my_url = 'http://api.rovicorp.com/data/v1/album/primaryreview?album=' + str(data) + '&format=json' + '&apikey=' + str(apikey()) + '&sig=' + str(sign())
+
+    f = urllib.urlopen(my_url)
+    review = json.loads(f.read())
+    
+    review_text = "Sorry, no album review available"
+    album_review = review.get('primaryReview')
+    if album_review:
+        review_text = album_review.get('text')
+    review_text = scrub_links(review_text)
+
+    # chop
+    msg_array = [ ]
+    msg_trim(review_text, msg_array, " ")
+    
+    resp = twilio.twiml.Response()
+    for message in msg_array:
+        resp.sms(message)
+    return str(resp)
+
 if __name__ == '__main__':
     app.debug = False
     app.run()
