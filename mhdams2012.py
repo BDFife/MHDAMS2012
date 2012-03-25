@@ -43,6 +43,8 @@ def cmd_parse(cmd):
                             # trim whitespace
     """, re.VERBOSE)
 
+    # add in a lowercase coercion to make things simpler. 
+    cmd = cmd.lower()
     result = command_ref.match(cmd)
     # if no match was found, result will be None
     if result:
@@ -50,6 +52,7 @@ def cmd_parse(cmd):
         my_data = result.group('data')
     else:
         my_cmd = "info"
+
         my_data = 'garbage'
     return my_cmd, my_data
 
@@ -68,7 +71,7 @@ def index():
 @app.route('/commands/info/<data>', methods=['POST', 'GET'])
 def info(data):
     resp = twilio.twiml.Response()
-    resp.sms("Valid commands are name, bio, album, review.\r\n Example: 'name bieber'")
+    resp.sms("Valid commands are name, bio, album, review. \r\nExample: 'name bieber'")
     return str(resp)
 
 @app.route('/album/info/<data>', methods=['POST', 'GET'])
@@ -82,7 +85,7 @@ def album(data):
     release_date = album["album"]["originalReleaseDate"]
 
     resp= twilio.twiml.Response()
-    resp.sms("Top result: " + top_album + " by " + top_artist + ". Released on " + str(release_date))
+    resp.sms("Top result: " + top_album + " by " + top_artist + ". Released on " + str(release_date) + ".")
     return str(resp)
 
 @app.route('/artist/discography/<data>', methods=['POST', 'GET'])
