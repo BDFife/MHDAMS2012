@@ -11,7 +11,6 @@ import twilio.twiml
 
 app = Flask (__name__)
 
-
 def msg_trim(msg, msg_array):
 	if len(msg) < 160:
 		msg_array.append(msg)
@@ -34,16 +33,6 @@ def index():
         resp.sms("This starbase is fully operational")
         return str(resp)
 
-
-@app.route('/album/search/<album>')
-def find_album(album):
-    my_url = 'http://api.rovicorp.com/search/v2/music/search?query=' + str(album) + '&apikey=' + str(apikey()) + '&sig=' + str(sign()) + '&entitytype=album'
-
-    f = urllib.urlopen(my_url)
-    album = json.loads(f.read())
-
-    return str(album)
-
 @app.route('/album/info/', methods=['POST', 'GET'])
 def show_album():
     if request.method == 'GET':
@@ -62,8 +51,6 @@ def show_album():
 
         resp= twilio.twiml.Response()
         resp.sms("Top result: " + top_album + " by " + top_artist)
-        # resp.sms("Will this send two messages?")
-        # yes, it will.
         return str(resp)
 
 @app.route('/artist/discography/', methods=['POST', 'GET'])
@@ -75,12 +62,9 @@ def show_discography():
     
     if request.method == 'POST':
         artist_name = request.form.get("Body")
-
         my_url = 'http://api.rovicorp.com/data/v1/name/discography?name=' + str(artist_name) + '&type=main' + '&format=json' + '&apikey=' + str(apikey()) + '&sig=' + str(sign()) 
-
         f = urllib.urlopen(my_url)
         discography = json.loads(f.read())
-
         album_str = ""
         for albums in discography['discography']:
             album_str = album_str + albums.get('title') + " " + albums.get('year')[:4] + "\r\n"
