@@ -36,7 +36,8 @@ def cmd_parse(cmd):
          name|              # artist name
          album|             # album name
          bio|               # artist biography
-         review)            # album review
+         review|            # album review
+         song)              # song info
         [\s]+               # allow interim whitespace
         (?P<data>           # identify as the "data"
          .+)                # (data is any remaining chars)
@@ -70,7 +71,21 @@ def index():
 @app.route('/commands/info/<data>', methods=['POST', 'GET'])
 def info(data):
     resp = twilio.twiml.Response()
-    resp.sms("Valid commands are name, bio, album, review. \r\nExample: 'name bieber'")
+    resp.sms("Valid commands are name, song, bio, album, review. \r\nExample: 'name bieber'")
+    return str(resp)
+
+@app.route('/song/info/<data>', methods=['POST', 'GET'])
+def song(data):
+    my_url = 'http://api.rovicorp.com/data/v1/song/info?track=' + str(data) + "&apikey=" + str(apikey()) + "&sig=" + str(sign())
+
+    f = urllib.urlopen(my_url)
+
+    song = json.loads(f.read())
+    top_song = song["song"]["title"]
+    top_artist = song["song"]["primaryArtists"][0]["name"]
+
+    resp = twilio.twiml.Response()
+    resp.sms("Top result: " + top_song + " by " + top_artist + ".")
     return str(resp)
 
 @app.route('/album/info/<data>', methods=['POST', 'GET'])
