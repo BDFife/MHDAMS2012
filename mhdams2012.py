@@ -1,5 +1,6 @@
 from flask import Flask
 from flask import request
+from flask import url_for, redirect
 
 from secrets import apikey, sign
 
@@ -45,7 +46,6 @@ def cmd_parse(cmd):
     else:
         my_cmd = 'help'
         my_data = None
-
     return my_cmd, my_data
 
 @app.route('/', methods=['POST', 'GET'])
@@ -58,29 +58,23 @@ def index():
     if request.method == 'POST':
         cmd_text = request.form.get("Body")
         cmd, data = cmd_parse(cmd_text)
-        resp = twilio.twiml.Response()
-        resp.sms("You asked for " + str(cmd )+ " of " + str(data))
-        return str(resp)
+        #resp = twilio.twiml.Response()
+        #resp.sms("You asked for " + str(cmd )+ " of " + str(data))
+        #return str(resp)
+        return redirect(url_for(cmd, data=data))
+                        
+@app.route('/album/info/<data>', methods=['POST', 'GET'])
+def album(data):
+    my_url = 'http://api.rovicorp.com/data/v1/album/info?album=' + str(data) + '&apikey=' + str(apikey()) + '&sig=' + str(sign())
 
-@app.route('/album/info/', methods=['POST', 'GET'])
-def album():
-    if request.method == 'GET':
-        resp = twilio.twiml.Response()
-        resp.sms("You need to use a POST method with this URL")
-        return str(resp)
+    f = urllib.urlopen(my_url)
+    album = json.loads(f.read())
+    top_album = album["album"]["title"]
+    top_artist = album["album"]["primaryArtists"][0]["name"]
 
-    if request.method == 'POST':
-        album_name = request.form.get("Body")
-        my_url = 'http://api.rovicorp.com/data/v1/album/info?album=' + str(album_name) + '&apikey=' + str(apikey()) + '&sig=' + str(sign())
-
-        f = urllib.urlopen(my_url)
-        album = json.loads(f.read())
-        top_album = album["album"]["title"]
-        top_artist = album["album"]["primaryArtists"][0]["name"]
-
-        resp= twilio.twiml.Response()
-        resp.sms("Top result: " + top_album + " by " + top_artist)
-        return str(resp)
+    resp= twilio.twiml.Response()
+    resp.sms("Top result: " + top_album + " by " + top_artist)
+    return str(resp)
 
 @app.route('/artist/discography/', methods=['POST', 'GET'])
 def show_discography():
