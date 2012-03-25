@@ -15,14 +15,26 @@ import re
 app = Flask (__name__)
 
 def msg_trim(msg, msg_array, br_char):
-    if len(msg) < 160:
+    if len(msg) < 140:
         msg_array.append(msg)
     else:
-        index = msg.rfind(br_char, 0, 160)
+        index = msg.rfind(br_char, 0, 140)
         index += 1
         msg_array.append(msg[:index])
         msg_trim(msg[index:], msg_array, br_char)
     return msg_array
+
+
+def build_response(msg, br_char):
+    msg_array = [ ] 
+    msg_trim(msg, msg_array, br_char)
+    resp = twilio.twiml.Response()
+    
+    size = len(msg_array)
+    
+    for message in range(len(msg_array)):
+        resp.sms(str(msg_array[message]) + "(" + str(int(message+1)) + " of " + str(size) + ")")
+    return str(resp)
 
 def scrub_links(text):
     remove_links = re.compile(r"""\[.*?\]""")
@@ -84,9 +96,11 @@ def song(data):
     top_song = song["song"]["title"]
     top_artist = song["song"]["primaryArtists"][0]["name"]
 
-    resp = twilio.twiml.Response()
-    resp.sms("Top result: " + top_song + " by " + top_artist + ".")
-    return str(resp)
+    song_text = "Top result: " + top_song + " by " + top_artist + "."
+
+    return build_response(song_text, " ")
+
+
 
 @app.route('/album/info/<data>', methods=['POST', 'GET'])
 def album(data):
@@ -98,9 +112,11 @@ def album(data):
     top_artist = album["album"]["primaryArtists"][0]["name"]
     release_date = album["album"]["originalReleaseDate"]
 
-    resp= twilio.twiml.Response()
-    resp.sms("Top result: " + top_album + " by " + top_artist + ". Released on " + str(release_date) + ".")
-    return str(resp)
+    album_text = "Top result: " + top_album + " by " + top_artist + ". Released on " + str(release_date) + "."
+
+    return build_response(album_text, " ")
+
+
 
 @app.route('/artist/discography/<data>', methods=['POST', 'GET'])
 def name(data):
@@ -113,14 +129,7 @@ def name(data):
     for albums in discography['discography']:
         album_str = album_str + albums.get('title') + " " + albums.get('year')[:4] + "\r\n"
     
-    # now chop the string into 160 character chunks. 
-    msg_array = [ ]
-    msg_trim(album_str, msg_array, '\r\n')
-
-    resp= twilio.twiml.Response()
-    for message in msg_array:
-        resp.sms(message)
-    return str(resp)
+    return build_response(album_str, '\r\n')
 
 @app.route('/artist/bio/<data>', methods=['POST', 'GET'])
 def bio(data):
@@ -138,14 +147,9 @@ def bio(data):
             bio_text = music_overview[0].get("overview")
     bio_text = scrub_links(bio_text)
 
-    # chop to 160 chunks
-    msg_array = [ ] 
-    msg_trim(bio_text, msg_array, " ")
+    return build_response(bio_text, " ")
 
-    resp = twilio.twiml.Response()
-    for message in msg_array:
-        resp.sms(message)
-    return str(resp)
+
 
 @app.route('/album/review/<data>', methods=['POST', 'GET'])
 def review(data):
@@ -160,14 +164,7 @@ def review(data):
         review_text = album_review.get('text')
     review_text = scrub_links(review_text)
 
-    # chop
-    msg_array = [ ]
-    msg_trim(review_text, msg_array, " ")
-    
-    resp = twilio.twiml.Response()
-    for message in msg_array:
-        resp.sms(message)
-    return str(resp)
+    return build_response(review_text, " ")
 
 if __name__ == '__main__':
     app.debug = False
